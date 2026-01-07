@@ -1168,7 +1168,7 @@ const Index = () => {
                       <p className={`text-base mb-4 ${
                         isDark ? 'text-slate-300' : 'text-slate-600'
                       }`}>
-                        Sua opinião é muito importante para nós! Entre em contato para reportar problemas, sugerir melhorias ou solicitar novas funcionalidades.
+                        Por gentileza esse é um projeto inicial, caso encontre algum bug avisar para conseguirmos melhorar, caso queira sugerir ideias, fique a vontade.
                       </p>
                     </div>
                     
