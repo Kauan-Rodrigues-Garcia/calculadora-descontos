@@ -992,7 +992,7 @@ const Index = () => {
                     <p className={`text-base leading-relaxed mb-3 ${
                       isDark ? 'text-slate-300' : 'text-slate-700'
                     }`}>
-                      A <strong>Calculadora de Descontos</strong> A Calculadora de Descontos é uma ferramenta para <strong>facilitar e agilizar</strong> o processo de calcular descontos no setores, desenvolvida <strong>especialmente para o receptivo</strong>.
+                      A <strong>Calculadora de Descontos</strong> é uma ferramenta para <strong>facilitar e agilizar</strong> o processo de atendimento nos setores, desenvolvida <strong>especialmente para o receptivo</strong>.
                     </p>
                     <p className={`text-base leading-relaxed ${
                       isDark ? 'text-slate-300' : 'text-slate-700'
