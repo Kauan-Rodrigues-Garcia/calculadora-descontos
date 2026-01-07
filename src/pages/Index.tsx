@@ -1175,7 +1175,7 @@ const Index = () => {
                     {/* Botão de feedback */}
                     <div className="flex justify-center">
                       <a 
-                        href="https://wa.me/5511999999999?text=Olá%2C%20gostaria%20de%20dar%20um%20feedback%20sobre%20a%20Calculadora%20de%20Descontos%20-%20Elites" 
+                        href="https://wa.me/5518935056541?text=Olá%2C%20gostaria%20de%20dar%20um%20feedback%20sobre%20a%20Calculadora%20de%20Descontos%20-%20Elites" 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className={`inline-flex items-center gap-3 px-8 py-4 rounded-xl font-semibold text-base transition-all ${
