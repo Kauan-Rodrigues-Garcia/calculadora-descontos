@@ -901,6 +901,14 @@ const Index = () => {
                             </span>
                           </div>
                           <div className="flex justify-between items-center">
+                            <span className={`font-medium ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>Economia:</span>
+                            <span className={`font-semibold ${isDark ? 'text-white' : 'text-slate-800'}`}>
+                              R$ {valorParcelaAcordo && parcelasRestantes ? 
+                                ((parseFloat(valorParcelaAcordo.replace(',', '.')) * parseInt(parcelasRestantes) * descontosAcordosAtivos.quitacao) / 100).toFixed(2).replace('.', ',') : 
+                                "0,00"}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center">
                             <span className={`font-medium ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>Desconto para Quitação:</span>
                             <span className={`font-semibold text-green-600`}>{descontosAcordosAtivos.quitacao}%</span>
                           </div>
