@@ -992,12 +992,12 @@ const Index = () => {
                     <p className={`text-base leading-relaxed mb-3 ${
                       isDark ? 'text-slate-300' : 'text-slate-700'
                     }`}>
-                      A <strong>Calculadora de Descontos</strong> é uma ferramenta profissional desenvolvida para <strong>otimizar negociações de cobrança</strong> e <strong>aumentar a taxa de conversão</strong> de pagamentos.
+                      A <strong>Calculadora de Descontos</strong> A Calculadora de Descontos é uma ferramenta para <strong>facilitar e agilizar</strong> o processo de calcular descontos no setores, desenvolvida <strong>especialmente para o receptivo</strong>.
                     </p>
                     <p className={`text-base leading-relaxed ${
                       isDark ? 'text-slate-300' : 'text-slate-700'
                     }`}>
-                      Ela automatiza o cálculo de descontos personalizados por setor, aplica regras de negócio inteligentes e gera mensagens padronizadas para WhatsApp, garantindo <strong>agilidade</strong>, <strong>precisão</strong> e <strong>profissionalismo</strong> no atendimento.
+                      Ela automatiza o cálculo de descontos personalizados por <strong>setor</strong>, aplica regras de acordo para negociação e gera <strong>mensagens padronizadas para Chatplay/WhatsApp</strong>, garantindo <strong>agilidade</strong>, e facilidade na hora de calcular os <strong>descontos</strong>.
                     </p>
                   </div>
 
