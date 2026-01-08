@@ -527,7 +527,7 @@ const Index = () => {
                     <Label htmlFor="valorParcela" className={`text-sm font-semibold mb-2 block ${
                       isDark ? 'text-slate-200' : 'text-slate-700'
                     }`}>
-                      Valor da Parcela Atual *
+                      Valor da Parcela*
                     </Label>
                     <Input
                       id="valorParcela"
