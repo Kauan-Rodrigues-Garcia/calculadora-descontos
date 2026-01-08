@@ -1,4 +1,4 @@
-# Calculadora de Descontos V19
+# Calculadora de Descontos 
 
 Sistema automático para calcular descontos por setor e gerar mensagens personalizadas para clientes.
 
