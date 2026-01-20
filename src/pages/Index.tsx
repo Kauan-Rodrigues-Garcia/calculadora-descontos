@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,17 +6,213 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Copy, Calculator, Settings, Moon, Sun, HelpCircle, User, ExternalLink, FileText, CheckCircle, BarChart3, Target, Minus, Plus, ChevronDown, ChevronUp } from "lucide-react";
+import { Copy, Calculator, Settings, Moon, Sun, HelpCircle, User, ExternalLink, FileText, CheckCircle, BarChart3, Target, Minus, Plus, ChevronDown, ChevronUp, Lock, LogOut, Shield, Eye, EyeOff } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
+// Tipos para autenticação
+interface Usuario {
+  login: string;
+  senha: string;
+  setor: string;
+  perfil: 'admin' | 'setor';
+  nome: string;
+}
+
+interface UsuarioLogado {
+  login: string;
+  setor: string;
+  perfil: 'admin' | 'setor';
+  nome: string;
+  setoresPermitidos: string[];
+}
+
+// Base de usuários do sistema
+const USUARIOS: Usuario[] = [
+  { login: "receptivo", senha: "admin123", setor: "TODOS", perfil: "admin", nome: "Receptivo (Administrador)" },
+  { login: "setor1", senha: "123", setor: "EM DIA", perfil: "setor", nome: "Setor EM DIA" },
+  { login: "setor2", senha: "123", setor: "PLAY 1", perfil: "setor", nome: "Setor PLAY 1" },
+  { login: "setor3", senha: "123", setor: "PLAY 2", perfil: "setor", nome: "Setor PLAY 2" },
+  { login: "setor4", senha: "123", setor: "PLAY 3", perfil: "setor", nome: "Setor PLAY 3" },
+  { login: "setor5", senha: "123", setor: "PLAY 4", perfil: "setor", nome: "Setor PLAY 4" },
+  { login: "setor6", senha: "123", setor: "PLAY 5", perfil: "setor", nome: "Setor PLAY 5" },
+  { login: "setor7", senha: "123", setor: "PLAY 6", perfil: "setor", nome: "Setor PLAY 6" }
+];
+
+// Componente de Login
+const LoginForm = ({ onLogin, isDark }: { onLogin: (usuario: UsuarioLogado) => void; isDark: boolean }) => {
+  const [login, setLogin] = useState("");
+  const [senha, setSenha] = useState("");
+  const [mostrarSenha, setMostrarSenha] = useState(false);
+  const [carregando, setCarregando] = useState(false);
+  const { toast } = useToast();
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCarregando(true);
+
+    // Simular delay de autenticação
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    const usuario = USUARIOS.find(u => u.login === login && u.senha === senha);
+
+    if (usuario) {
+      const usuarioLogado: UsuarioLogado = {
+        login: usuario.login,
+        setor: usuario.setor,
+        perfil: usuario.perfil,
+        nome: usuario.nome,
+        setoresPermitidos: usuario.perfil === 'admin' 
+          ? ["EM DIA", "PLAY 1", "PLAY 2", "PLAY 3", "PLAY 4", "PLAY 5", "PLAY 6"]
+          : [usuario.setor]
+      };
+
+      // Salvar no localStorage para persistência
+      localStorage.setItem('calculadora_usuario', JSON.stringify(usuarioLogado));
+      
+      toast({
+        title: "Login realizado com sucesso!",
+        description: `Bem-vindo, ${usuario.nome}`,
+      });
+
+      onLogin(usuarioLogado);
+    } else {
+      toast({
+        title: "Erro de autenticação",
+        description: "Login ou senha incorretos",
+        variant: "destructive"
+      });
+    }
+
+    setCarregando(false);
+  };
+
+  return (
+    <div className={`min-h-screen flex items-center justify-center transition-all duration-300 ${
+      isDark 
+        ? 'bg-slate-900' 
+        : 'bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50'
+    }`}>
+      <Card className={`w-full max-w-md rounded-2xl border-0 shadow-2xl ${
+        isDark 
+          ? 'bg-slate-800 shadow-slate-900/50' 
+          : 'bg-white shadow-slate-200/50'
+      }`}>
+        <CardHeader className="text-center pb-4">
+          <div className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4 mx-auto ${
+            isDark 
+              ? 'bg-blue-600 shadow-lg shadow-blue-600/25' 
+              : 'bg-blue-600 shadow-lg shadow-blue-600/25'
+          }`}>
+            <Lock className="h-8 w-8 text-white" />
+          </div>
+          <CardTitle className={`text-2xl font-bold ${
+            isDark ? 'text-white' : 'text-slate-800'
+          }`}>
+            Acesso Restrito
+          </CardTitle>
+          <p className={`text-sm ${
+            isDark ? 'text-slate-300' : 'text-slate-600'
+          }`}>
+            Faça login para acessar a Calculadora de Descontos
+          </p>
+        </CardHeader>
+        
+        <CardContent>
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <Label htmlFor="login" className={`text-sm font-semibold mb-2 block ${
+                isDark ? 'text-slate-200' : 'text-slate-700'
+              }`}>
+                Login
+              </Label>
+              <Input
+                id="login"
+                type="text"
+                value={login}
+                onChange={(e) => setLogin(e.target.value)}
+                placeholder="Digite seu login"
+                required
+                className={`h-12 rounded-xl border-2 transition-all ${
+                  isDark 
+                    ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400 hover:border-blue-500 focus:border-blue-500' 
+                    : 'bg-white border-slate-300 text-slate-800 placeholder-slate-500 hover:border-blue-500 focus:border-blue-500'
+                }`}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="senha" className={`text-sm font-semibold mb-2 block ${
+                isDark ? 'text-slate-200' : 'text-slate-700'
+              }`}>
+                Senha
+              </Label>
+              <div className="relative">
+                <Input
+                  id="senha"
+                  type={mostrarSenha ? "text" : "password"}
+                  value={senha}
+                  onChange={(e) => setSenha(e.target.value)}
+                  placeholder="Digite sua senha"
+                  required
+                  className={`h-12 rounded-xl border-2 pr-12 transition-all ${
+                    isDark 
+                      ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400 hover:border-blue-500 focus:border-blue-500' 
+                      : 'bg-white border-slate-300 text-slate-800 placeholder-slate-500 hover:border-blue-500 focus:border-blue-500'
+                  }`}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setMostrarSenha(!mostrarSenha)}
+                  className={`absolute right-2 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 ${
+                    isDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  {mostrarSenha ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
+              </div>
+            </div>
+
+            <Button 
+              type="submit"
+              disabled={carregando}
+              className={`w-full h-12 rounded-xl font-semibold text-base transition-all ${
+                isDark 
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/25' 
+                  : 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/25'
+              }`}
+            >
+              {carregando ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Autenticando...
+                </>
+              ) : (
+                <>
+                  <Lock className="h-4 w-4 mr-2" />
+                  Entrar
+                </>
+              )}
+            </Button>
+          </form>
+
+
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
+
 const Index = () => {
+  const [usuarioLogado, setUsuarioLogado] = useState<UsuarioLogado | null>(null);
   const [setor, setSetor] = useState("");
   const [valorTotal, setValorTotal] = useState("");
   const [valorParcela, setValorParcela] = useState("");
   const [parcelasAtraso, setParcelasAtraso] = useState("");
   const [todasParcelasAtraso, setTodasParcelasAtraso] = useState(false);
   const [mensagem, setMensagem] = useState("");
-  const [isDark, setIsDark] = useState(false);
+  const [isDark, setIsDark] = useState(true);
   const { toast } = useToast();
 
   // Estados para Acordos Ativos
@@ -26,6 +222,28 @@ const Index = () => {
   const [parcelasRestantes, setParcelasRestantes] = useState("");
   const [mensagemAcordo, setMensagemAcordo] = useState("");
   const [isMinimized, setIsMinimized] = useState(false);
+
+  // Estado para o setor selecionado na configuração
+  const [setorSelecionadoConfig, setSetorSelecionadoConfig] = useState("EM DIA");
+
+  // Estados para o sistema de mensagens
+  const [mensagemAtual, setMensagemAtual] = useState(1); // 1, 2 ou 3
+  const [mensagensCalculadas, setMensagensCalculadas] = useState<{[key: number]: string}>({});
+
+  // Verificar se há usuário logado no localStorage
+  useEffect(() => {
+    const usuarioSalvo = localStorage.getItem('calculadora_usuario');
+    if (usuarioSalvo) {
+      const usuario = JSON.parse(usuarioSalvo);
+      setUsuarioLogado(usuario);
+      
+      // Se for usuário de setor específico, definir automaticamente
+      if (usuario.perfil === 'setor') {
+        setSetor(usuario.setor);
+        setSetorSelecionadoConfig(usuario.setor);
+      }
+    }
+  }, []);
 
   const toggleTheme = () => {
     setIsDark(!isDark);
@@ -59,21 +277,21 @@ const Index = () => {
       semestral: 0,
       anual: 0
     },
+    "PLAY 4": {
+      quitacao: 45,
+      juncao: 15,
+      semestral: 0,
+      anual: 0
+    },
+    "PLAY 5": {
+      quitacao: 45,
+      juncao: 15,
+      semestral: 0,
+      anual: 0
+    },
     "PLAY 6": {
-      quitacao: 60,
-      juncao: 0,
-      semestral: 0,
-      anual: 0
-    },
-    "Bookplay MARÍLIA": {
-      quitacao: 60,
-      juncao: 0,
-      semestral: 0,
-      anual: 0
-    },
-    "Play MARÍLIA": {
-      quitacao: 60,
-      juncao: 0,
+      quitacao: 45,
+      juncao: 15,
       semestral: 0,
       anual: 0
     }
@@ -82,16 +300,92 @@ const Index = () => {
   // Configuração dos descontos para Acordos Ativos
   const [descontosAcordosAtivos, setDescontosAcordosAtivos] = useState({
     quitacao: 30,
-    juncao: 10, // parcela do mês + a vencer
+    juncao: 10,
     atrasoParcelaVencer: 5
   });
 
+  // Função para verificar permissão de acesso ao setor
+  const temPermissaoSetor = (setorVerificar: string): boolean => {
+    if (!usuarioLogado) return false;
+    return usuarioLogado.setoresPermitidos.includes(setorVerificar);
+  };
+
+  // Função para obter setores permitidos para o usuário
+  const getSetoresPermitidos = (): string[] => {
+    if (!usuarioLogado) return [];
+    return usuarioLogado.setoresPermitidos;
+  };
+
+  // Função de logout
+  const handleLogout = () => {
+    localStorage.removeItem('calculadora_usuario');
+    setUsuarioLogado(null);
+    setSetor("");
+    setSetorSelecionadoConfig("EM DIA");
+    toast({
+      title: "Logout realizado",
+      description: "Você foi desconectado com sucesso"
+    });
+  };
+
+  // Função de login
+  const handleLogin = (usuario: UsuarioLogado) => {
+    setUsuarioLogado(usuario);
+    
+    // Se for usuário de setor específico, definir automaticamente
+    if (usuario.perfil === 'setor') {
+      setSetor(usuario.setor);
+      setSetorSelecionadoConfig(usuario.setor);
+    }
+  };
+
+  // Validação de segurança para mudança de setor
+  const handleSetorChange = (novoSetor: string) => {
+    if (!temPermissaoSetor(novoSetor)) {
+      toast({
+        title: "Acesso negado",
+        description: "Você não tem permissão para acessar este setor",
+        variant: "destructive"
+      });
+      return;
+    }
+    setSetor(novoSetor);
+  };
+
+  // Validação de segurança para configuração
+  const handleSetorConfigChange = (novoSetor: string) => {
+    if (!temPermissaoSetor(novoSetor)) {
+      toast({
+        title: "Acesso negado",
+        description: "Você não tem permissão para configurar este setor",
+        variant: "destructive"
+      });
+      return;
+    }
+    setSetorSelecionadoConfig(novoSetor);
+  };
+
+  // Se não estiver logado, mostrar tela de login
+  if (!usuarioLogado) {
+    return <LoginForm onLogin={handleLogin} isDark={isDark} />;
+  }
+
   const calcularTodosDescontos = () => {
+    // Validação de segurança
+    if (!temPermissaoSetor(setor)) {
+      toast({
+        title: "Acesso negado",
+        description: "Você não tem permissão para calcular descontos deste setor",
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (setor === "EM DIA") {
-      if (!valorParcela) {
+      if (!valorTotal || !valorParcela) {
         toast({
           title: "Campos obrigatórios",
-          description: "Preencha o valor da parcela",
+          description: "Preencha o valor total e valor da parcela",
           variant: "destructive"
         });
         return;
@@ -126,12 +420,8 @@ const Index = () => {
 
     const valorParcelaNum = tratarValor(valorParcela);
     const parcelasAtrasoNum = parcelasAtraso ? parseInt(parcelasAtraso) : 0;
-    const valorTotalNum = setor === "EM DIA" ? valorParcelaNum * parcelasAtrasoNum : tratarValor(valorTotal);
+    const valorTotalNum = tratarValor(valorTotal);
     const descontosSetor = descontosPorSetor[setor];
-    console.log(valorTotalNum)
-    console.log(valorParcelaNum)
-    console.log(parcelasAtrasoNum)
-    console.log(descontosSetor)
 
     const getEmojiNumber = (num) => {
       const emojis = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣"];
@@ -143,8 +433,8 @@ const Index = () => {
     
     // Regras de validação
     const podeExibirJuncao = setor === "EM DIA" ? true : parcelasAtrasoNum < 3;
-    const podeExibirSemestral = totalLogicoParcelas >= 6 && !todasParcelasAtraso;
-    const podeExibirAnual = totalLogicoParcelas >= 12 && !todasParcelasAtraso;
+    const podeExibirSemestral = totalLogicoParcelas >= 6 && descontosSetor.semestral > 0;
+    const podeExibirAnual = totalLogicoParcelas >= 12 && descontosSetor.anual > 0;
     
     let mensagemGerada = "";
     let numeroOpcao = 1;
@@ -237,30 +527,40 @@ const Index = () => {
       mensagemGerada += `Ficaria em ${numeroParcelas}x de R$ ${novaParcelaComDesconto.toFixed(2).replace('.', ',')} no cartão\n\n`;
       numeroOpcao++;
     }
-
+    
     // REGULARIZAR PARCELAS EM ATRASO
-    if (parcelasAtrasoNum > 0 && !todasParcelasAtraso && setor !== "EM DIA") {
+    if (parcelasAtrasoNum > 0 && setor !== "EM DIA") {
       const valorParcelasAtraso = valorParcelaNum * parcelasAtrasoNum;
       mensagemGerada += `*${getEmojiNumber(numeroOpcao)} - Regularizar parcelas em atraso* no valor de *R$ ${valorParcelasAtraso.toFixed(2).replace('.', ',')}* (PIX ou cartão de crédito)\n\n`;
       numeroOpcao++;
     }
 
-    // TODAS AS PARCELAS EM ATRASO
-    if (setor !== "EM DIA" && parcelasAtrasoNum > 0 && todasParcelasAtraso) {
-      const valorParcelasAtraso = valorParcelaNum * parcelasAtrasoNum;
-      mensagemGerada += `*${getEmojiNumber(numeroOpcao)} - Todas as parcelas em atraso*: por *R$ ${valorParcelasAtraso.toFixed(2).replace('.', ',')}* (PIX/cartão de crédito)\n\n`;
-      numeroOpcao++;
-    }
-
     // CONTRAPROPOSTA
     mensagemGerada += `*${getEmojiNumber(numeroOpcao)} - Contraproposta.*`;
-
-    // Mensagem final para PLAY 2 em diante
-    if (setor === "PLAY 2" || setor === "PLAY 3" || setor === "PLAY 6" || setor === "Bookplay MARÍLIA" || setor === "Play MARÍLIA") {
-      mensagemGerada += "\n\n*Após o pagamento seu contrato será extinto de qualquer cobrança e seu CPF liberado de todas as restrições.*";
+    
+    // Gerar mensagens baseadas no setor
+    let mensagensGeradas: {[key: number]: string} = {};
+    
+    // PRIMEIRA MENSAGEM SEMPRE A PADRÃO ORIGINAL
+    mensagensGeradas[1] = mensagemGerada;
+    
+    if (setor === "PLAY 3" || setor === "PLAY 4" || setor === "PLAY 5" || setor === "PLAY 6") {
+      // Setores 3 em diante - mensagens 2 e 3 diretas e urgentes
+      mensagensGeradas[2] = gerarMensagemSetor3EmDiante(2, valorTotalNum, descontosSetor);
+      mensagensGeradas[3] = gerarMensagemSetor3EmDiante(3, valorTotalNum, descontosSetor);
+    } else if (setor === "PLAY 2") {
+      // Setor 2 - mensagens 2 e 3 explicativas e institucionais
+      mensagensGeradas[2] = gerarMensagemSetor2EmDiante(2, valorTotalNum, valorParcelaNum, descontosSetor, parcelasAtrasoNum);
+      mensagensGeradas[3] = gerarMensagemSetor2EmDiante(3, valorTotalNum, valorParcelaNum, descontosSetor, parcelasAtrasoNum);
+    } else {
+      // EM DIA e PLAY 1 - todas as mensagens iguais à original
+      mensagensGeradas[2] = mensagemGerada;
+      mensagensGeradas[3] = mensagemGerada;
     }
-
-    setMensagem(mensagemGerada);
+    
+    setMensagensCalculadas(mensagensGeradas);
+    setMensagemAtual(1);
+    setMensagem(mensagensGeradas[1] || mensagemGerada);
     
     toast({
       title: "Cálculo realizado!",
@@ -290,6 +590,156 @@ const Index = () => {
         description: "Não foi possível copiar a mensagem",
         variant: "destructive"
       });
+    }
+  };
+
+  // Função para limpar todos os campos
+  const limparTodosCampos = () => {
+    setValorTotal("");
+    setValorParcela("");
+    setParcelasAtraso("");
+    setMensagem("");
+    setMensagensCalculadas({});
+    setMensagemAtual(1);
+    toast({
+      title: "Campos limpos!",
+      description: "Todos os campos foram limpos com sucesso"
+    });
+  };
+
+  // Função para trocar mensagem
+  const trocarMensagem = () => {
+    if (Object.keys(mensagensCalculadas).length === 0) {
+      toast({
+        title: "Nenhuma mensagem calculada",
+        description: "Calcule os descontos primeiro",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    const proximaMensagem = mensagemAtual === 3 ? 1 : mensagemAtual + 1;
+    setMensagemAtual(proximaMensagem);
+    setMensagem(mensagensCalculadas[proximaMensagem] || "");
+    
+    toast({
+      title: `Mensagem ${proximaMensagem}`,
+      description: "Mensagem alterada com sucesso"
+    });
+  };
+
+  // Funções para gerar mensagens por setor
+  const gerarMensagemSetor3EmDiante = (numeroMensagem: number, valorTotalNum: number, descontosSetor: any) => {
+    const valorQuitacao = valorTotalNum * (descontosSetor.quitacao / 100);
+    const valorComDesconto = valorTotalNum - valorQuitacao;
+    const valorParcelado12x = valorComDesconto / 12;
+
+    switch (numeroMensagem) {
+      case 1:
+        return `📌 Valor atualizado do débito: ~R$ ${valorTotalNum.toFixed(2).replace('.', ',')}~
+
+1️⃣ PIX por apenas *R$ ${valorComDesconto.toFixed(2).replace('.', ',')}*
+
+2️⃣ Cartão de crédito parcelado em até *12x de R$ ${valorParcelado12x.toFixed(2).replace('.', ',')}*
+
+3️⃣ Quero fazer uma contraproposta e negociar agora!
+
+⚠️ URGENTE! O não retorno a esta proposta poderá resultar na continuidade das medidas cabíveis em seu CPF.
+
+*Qual forma de pagamento vamos concluir?*`;
+      
+      case 2:
+        return `🔴 ATENÇÃO: Situação crítica detectada!
+
+Valor em aberto: *R$ ${valorTotalNum.toFixed(2).replace('.', ',')}*
+
+💰 OFERTA ESPECIAL:
+• Quitação à vista: *R$ ${valorComDesconto.toFixed(2).replace('.', ',')}*
+• Parcelamento facilitado: *12x R$ ${valorParcelado12x.toFixed(2).replace('.', ',')}*
+
+⏰ Esta proposta expira em 24h!
+
+*Confirme sua opção para regularizar hoje mesmo.*`;
+      
+      case 3:
+        return `🚨 Última oportunidade de negociação!
+
+Débito total: R$ ${valorTotalNum.toFixed(2).replace('.', ',')}
+
+🎯 CONDIÇÕES FINAIS:
+💳 PIX: R$ ${valorComDesconto.toFixed(2).replace('.', ',')}
+💳 Cartão: 12x R$ ${valorParcelado12x.toFixed(2).replace('.', ',')}
+
+⚠️ Após hoje, o caso seguirá para as medidas legais cabíveis.
+
+*Qual opção escolhe para encerrar definitivamente?*`;
+      
+      default:
+        return "";
+    }
+  };
+
+  const gerarMensagemSetor2EmDiante = (numeroMensagem: number, valorTotalNum: number, valorParcelaNum: number, descontosSetor: any, parcelasAtrasoNum: number) => {
+    const valorQuitacao = valorTotalNum * (descontosSetor.quitacao / 100);
+    const valorComDesconto = valorTotalNum - valorQuitacao;
+    const valorParcelado12x = valorComDesconto / 12;
+    const valorJuncao = (valorParcelaNum * parcelasAtrasoNum + valorParcelaNum) * (1 - descontosSetor.juncao / 100);
+    const valorParcelasAtraso = valorParcelaNum * parcelasAtrasoNum;
+
+    switch (numeroMensagem) {
+      case 1:
+        return `Para evitar restrições e manter seu *nome limpo*, liberamos *condições especiais de negociação* para regularizar seu contrato com a empresa.
+
+### *Opções de pagamento disponíveis:*
+
+1️⃣ Quitação de todas parcelas via PIX R$ *${valorTotalNum.toFixed(2).replace('.', ',')}* → R$ *${valorComDesconto.toFixed(2).replace('.', ',')}*
+
+2️⃣ Quitação total no cartão de crédito (podendo ser de terceiros) em até 12x → *R$ ${valorParcelado12x.toFixed(2).replace('.', ',')}*
+
+3️⃣ Junção (parcelas em atraso + a vencer com desconto) → *R$ ${valorJuncao.toFixed(2).replace('.', ',')}*
+
+4️⃣ Regularização apenas das parcelas em atraso sem juros → *R$ ${valorParcelasAtraso.toFixed(2).replace('.', ',')}*
+
+💳 *Escolha a melhor opção e garanta a paralisação das cobranças hoje mesmo.*
+
+📲 *0800 777 2020 Pagueplay*
+
+✨ *Ao pagar hoje, você elimina encargos, taxas e finaliza o pedido de possível processo.* Essa é a *oportunidade de resolver sua situação* e *garantir seu certificado 🎓* sem preocupações futuras.`;
+      
+      case 2:
+        return `Aviso que finaliza HOJE o prazo para *CONCILIAÇÃO AMIGÁVEL* ou manutenção do acordo formalizado do contrato com a empresa.
+
+Sua documentação foi classificada com urgência para despacho no valor de *R$ ${valorTotalNum.toFixed(2).replace('.', ',')}* + taxas.
+
+### ✅ Opções de resolução imediata:
+
+1️⃣ Quitação de TODAS as parcelas via PIX por *R$ ${valorComDesconto.toFixed(2).replace('.', ',')}*
+
+2️⃣ Cartão de crédito (próprio ou terceiros) em até *12x de R$ ${valorParcelado12x.toFixed(2).replace('.', ',')}*
+
+3️⃣ Junção (parcelas em atraso + a vencer) por *R$ ${valorJuncao.toFixed(2).replace('.', ',')}*
+
+4️⃣ Regularização das parcelas em atraso sem juros por *R$ ${valorParcelasAtraso.toFixed(2).replace('.', ',')}*
+
+⚠️ *Prazo final: HOJE*`;
+      
+      case 3:
+        return `🚨 NOTIFICAÇÃO FINAL - Processo em andamento
+
+Valor consolidado: R$ ${valorTotalNum.toFixed(2).replace('.', ',')}
+
+🔴 MEDIDAS IMEDIATAS DISPONÍVEIS:
+
+• Acordo total PIX: *R$ ${valorComDesconto.toFixed(2).replace('.', ',')}*
+• Parcelamento cartão: *12x R$ ${valorParcelado12x.toFixed(2).replace('.', ',')}*
+• Regularização parcial: *R$ ${valorParcelasAtraso.toFixed(2).replace('.', ',')}*
+
+⏱️ Prazo para resposta: Até o final do dia
+
+*Qual ação será tomada para evitar prosseguimento?*`;
+      
+      default:
+        return "";
     }
   };
 
@@ -397,30 +847,43 @@ const Index = () => {
         : 'bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50'
     }`}>
       <div className="container mx-auto px-4 py-6">
-        {/* Header com design baseado nas referências */}
+        {/* Header com informações do usuário */}
         <div className={`rounded-2xl p-6 mb-6 relative overflow-hidden ${
           isDark 
             ? 'bg-gradient-to-r from-slate-800 to-slate-700 border border-slate-600' 
             : 'bg-gradient-to-r from-white to-slate-50 border border-slate-200 shadow-lg'
         }`}>
-          <Button
-            onClick={toggleTheme}
-            variant="outline"
-            size="icon"
-            className={`absolute top-4 right-4 rounded-full ${
-              isDark 
-                ? 'border-slate-500 bg-slate-700 hover:bg-slate-600 text-slate-300' 
-                : 'border-slate-300 bg-white hover:bg-slate-50 text-slate-600'
-            }`}
-          >
-            {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </Button>
+          {/* Botões de controle */}
+          <div className="absolute top-4 right-4 flex gap-2">
+            <Button
+              onClick={toggleTheme}
+              variant="outline"
+              size="icon"
+              className={`rounded-full ${
+                isDark 
+                  ? 'border-slate-500 bg-slate-700 hover:bg-slate-600 text-slate-300' 
+                  : 'border-slate-300 bg-white hover:bg-slate-50 text-slate-600'
+              }`}
+            >
+              {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
+            <Button
+              onClick={handleLogout}
+              variant="outline"
+              size="icon"
+              className={`rounded-full ${
+                isDark 
+                  ? 'border-red-500 bg-red-900/20 hover:bg-red-900/40 text-red-400' 
+                  : 'border-red-300 bg-red-50 hover:bg-red-100 text-red-600'
+              }`}
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </div>
           
           <div className="text-center">
             <div className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4 ${
-              isDark 
-                ? 'bg-blue-600 shadow-lg shadow-blue-600/25' 
-                : 'bg-blue-600 shadow-lg shadow-blue-600/25'
+              isDark ? 'bg-blue-600 shadow-lg shadow-blue-600/25' : 'bg-blue-600 shadow-lg shadow-blue-600/25'
             }`}>
               <Calculator className="h-8 w-8 text-white" />
             </div>
@@ -429,11 +892,19 @@ const Index = () => {
             }`}>
               Calculadora de Descontos
             </h1>
-            <p className={`text-lg ${
+            <p className={`text-lg mb-3 ${
               isDark ? 'text-slate-300' : 'text-slate-600'
             }`}>
-              Calcule descontos e gere mensagens automaticamente
+              Bem-vindo, <strong>{usuarioLogado?.nome}</strong>
             </p>
+            
+            {/* Indicador de setor */}
+            <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium ${
+              isDark ? 'bg-blue-900/30 text-blue-300 border border-blue-700' : 'bg-blue-100 text-blue-700 border border-blue-200'
+            }`}>
+              <Lock className="h-4 w-4" />
+              Acesso: {usuarioLogado?.perfil === 'admin' ? 'TODOS OS SETORES' : usuarioLogado?.setor}
+            </div>
           </div>
         </div>
 
@@ -508,7 +979,11 @@ const Index = () => {
                     }`}>
                       Setor *
                     </Label>
-                    <Select value={setor} onValueChange={setSetor}>
+                    <Select 
+                      value={setor} 
+                      onValueChange={handleSetorChange}
+                      disabled={usuarioLogado?.perfil === 'setor'}
+                    >
                       <SelectTrigger className={`h-12 rounded-xl border-2 transition-all ${
                         isDark 
                           ? 'bg-slate-700 border-slate-600 text-white hover:border-blue-500 focus:border-blue-500' 
@@ -519,17 +994,17 @@ const Index = () => {
                       <SelectContent className={`rounded-xl ${
                         isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-200 text-slate-800'
                       }`}>
-                        <SelectItem value="EM DIA">EM DIA</SelectItem>
-                        <SelectItem value="PLAY 1">PLAY 1</SelectItem>
-                        <SelectItem value="PLAY 2">PLAY 2</SelectItem>
-                        <SelectItem value="PLAY 3">PLAY 3</SelectItem>
-                        <SelectItem value="PLAY 6">PLAY 6 / MARÍLIA</SelectItem>
+                        {getSetoresPermitidos().map((setorPermitido) => (
+                          <SelectItem key={setorPermitido} value={setorPermitido}>
+                            {setorPermitido}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
+
                   </div>
                   
-                  {setor !== "EM DIA" ? (
-                    <div>
+                  <div>
                       <Label htmlFor="valorTotal" className={`text-sm font-semibold mb-2 block ${
                         isDark ? 'text-slate-200' : 'text-slate-700'
                       }`}>
@@ -552,7 +1027,6 @@ const Index = () => {
                         Aceita: 1000 | 1.000 | 1000,00 | 1.000,00
                       </p>
                     </div>
-                  ) : null}
 
                   {setor !== "PLAY 6" ? (
                     <div>
@@ -580,12 +1054,12 @@ const Index = () => {
                     </div>
                   ) : null}
 
-                  {setor !== "PLAY 6" ? (
+                  {setor !== "PLAY 6" && setor !== "EM DIA" ? (
                     <div>
                       <Label htmlFor="parcelasAtraso" className={`text-sm font-semibold mb-2 block ${
                         isDark ? 'text-slate-200' : 'text-slate-700'
                       }`}>
-                        {setor === "EM DIA" ? 'Quantidade de parcelas' : "Parcelas em Atraso"}
+                        Parcelas em Atraso
                       </Label>
                       <Input
                         id="parcelasAtraso"
@@ -601,38 +1075,32 @@ const Index = () => {
                       />
                     </div>
                   ) : null}
-                  {setor !== "EM DIA" && setor !== "PLAY 6" ? (
-                    <div className="flex items-center space-x-3">
-                      <input
-                        type="checkbox"
-                        id="todasParcelasAtraso"
-                        checked={todasParcelasAtraso}
-                        onChange={(e) => setTodasParcelasAtraso(e.target.checked)}
-                        className={`w-5 h-5 rounded-md ${
-                          isDark 
-                            ? 'bg-slate-700 border-slate-600 text-blue-600 focus:ring-blue-500' 
-                            : 'bg-white border-slate-300 text-blue-600 focus:ring-blue-500'
-                        }`}
-                      />
-                      <Label htmlFor="todasParcelasAtraso" className={`text-sm font-medium ${
-                        isDark ? 'text-slate-300' : 'text-slate-600'
-                      }`}>
-                        Todas as parcelas estão em atraso
-                      </Label>
-                    </div>
-                  ) : null}
 
-                  <Button 
-                    onClick={calcularTodosDescontos} 
-                    className={`w-full h-12 rounded-xl font-semibold text-base transition-all ${
-                      isDark 
-                        ? 'bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-600/25' 
-                        : 'bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-600/25'
-                    }`}
-                  >
-                    <Calculator className="h-5 w-5 mr-2" />
-                    Calcular Descontos
-                  </Button>
+                  <div className="flex gap-3">
+                    <Button 
+                      onClick={calcularTodosDescontos} 
+                      className={`flex-1 h-12 rounded-xl font-semibold text-base transition-all ${
+                        isDark 
+                          ? 'bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-600/25' 
+                          : 'bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-600/25'
+                      }`}
+                    >
+                      <Calculator className="h-5 w-5 mr-2" />
+                      Calcular Descontos
+                    </Button>
+                    <Button 
+                      onClick={limparTodosCampos} 
+                      variant="outline"
+                      className={`h-12 px-4 rounded-xl font-semibold text-sm transition-all ${
+                        isDark 
+                          ? 'border-slate-500 text-slate-300 hover:bg-slate-700 hover:text-white' 
+                          : 'border-slate-300 text-slate-600 hover:bg-slate-50 hover:text-slate-800'
+                      }`}
+                    >
+                      <Target className="h-4 w-4 mr-1" />
+                      Limpar
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
 
@@ -643,11 +1111,34 @@ const Index = () => {
                   : 'bg-white shadow-slate-200/50'
               }`}>
                 <CardHeader className="pb-4">
-                  <CardTitle className={`text-xl font-bold ${
-                    isDark ? 'text-white' : 'text-slate-800'
-                  }`}>
-                    Mensagem Gerada
-                  </CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className={`text-xl font-bold ${
+                      isDark ? 'text-white' : 'text-slate-800'
+                    }`}>
+                      Mensagem Gerada
+                      {Object.keys(mensagensCalculadas).length > 0 && (
+                        <span className={`ml-2 text-sm font-normal px-2 py-1 rounded-full ${
+                          isDark ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-700'
+                        }`}>
+                          {mensagemAtual}/3
+                        </span>
+                      )}
+                    </CardTitle>
+                    {Object.keys(mensagensCalculadas).length > 0 && (
+                      <Button 
+                        onClick={trocarMensagem}
+                        variant="outline"
+                        size="sm"
+                        className={`h-8 px-3 text-xs transition-all ${
+                          isDark 
+                            ? 'border-blue-500 text-blue-400 hover:bg-blue-900/20' 
+                            : 'border-blue-300 text-blue-600 hover:bg-blue-50'
+                        }`}
+                      >
+                        Trocar Mensagem
+                      </Button>
+                    )}
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <Textarea
@@ -678,7 +1169,7 @@ const Index = () => {
             </div>
           </TabsContent>
 
-          {/* Aba Configurações */}
+          {/* Aba Configurações - COM CONTROLE DE ACESSO */}
           <TabsContent value="configuracoes" className="space-y-6 mt-6">
             <Card className={`rounded-2xl border-0 shadow-lg ${
               isDark 
@@ -698,56 +1189,182 @@ const Index = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid gap-6">
-                  {Object.entries(descontosPorSetor).map(([setor, descontos]) => (
-                    <div key={setor} className={`p-6 rounded-xl border-2 ${
+                {/* Select para escolher setor - COM CONTROLE DE ACESSO */}
+                <div className={`p-6 rounded-xl mb-6 ${
+                  isDark 
+                    ? 'bg-blue-900/30 border border-blue-700' 
+                    : 'bg-blue-50 border border-blue-200'
+                }`}>
+                  <Label htmlFor="setorConfig" className={`text-sm font-semibold mb-3 block ${
+                    isDark ? 'text-blue-300' : 'text-blue-700'
+                  }`}>
+                    📋 Selecione o Setor para Editar Descontos:
+                  </Label>
+                  <Select 
+                    value={setorSelecionadoConfig} 
+                    onValueChange={handleSetorConfigChange}
+                    disabled={usuarioLogado?.perfil === 'setor'}
+                  >
+                    <SelectTrigger className={`h-12 rounded-xl border-2 transition-all ${
                       isDark 
-                        ? 'bg-slate-700 border-slate-600' 
-                        : 'bg-slate-50 border-slate-200'
+                        ? 'bg-slate-700 border-slate-600 text-white hover:border-blue-500 focus:border-blue-500' 
+                        : 'bg-white border-slate-300 text-slate-800 hover:border-blue-500 focus:border-blue-500'
                     }`}>
-                      <h3 className={`font-bold text-lg mb-4 ${
-                        isDark ? 'text-white' : 'text-slate-800'
-                      }`}>
-                        {setor}
-                      </h3>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                        {Object.entries(descontos).map(([tipo, valor]) => (
-                          <div key={tipo}>
-                            <Label className={`text-xs font-semibold mb-2 block ${
-                              isDark ? 'text-slate-300' : 'text-slate-600'
-                            }`}>
-                              {tipo === 'quitacao' ? 'Quitação (%)' :
-                               tipo === 'juncao' ? 'Junção (%)' :
-                               tipo === 'pixAutomatico' ? 'PIX Auto (%)' :
-                               tipo === 'cartaoRecorrente' ? 'Cartão Rec. (%)' :
-                               tipo === 'semestral' ? 'Semestral (%)' :
-                               'Anual (%)'}
-                            </Label>
-                            <Input
-                              type="number"
-                              value={valor}
-                              onChange={(e) => {
-                                const novoValor = parseFloat(e.target.value) || 0;
-                                setDescontosPorSetor(prev => ({
-                                  ...prev,
-                                  [setor]: {
-                                    ...prev[setor],
-                                    [tipo]: novoValor
-                                  }
-                                }));
-                              }}
-                              className={`h-10 rounded-lg border-2 text-center font-semibold ${
-                                isDark 
-                                  ? 'bg-slate-600 border-slate-500 text-white focus:border-blue-500' 
-                                  : 'bg-white border-slate-300 text-slate-800 focus:border-blue-500'
-                              }`}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
+                      <SelectValue placeholder="Escolha o setor para configurar" />
+                    </SelectTrigger>
+                    <SelectContent className={`rounded-xl ${
+                      isDark ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-slate-200 text-slate-800'
+                    }`}>
+                      {getSetoresPermitidos().map((setorPermitido) => (
+                        <SelectItem key={setorPermitido} value={setorPermitido}>
+                          {setorPermitido}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className={`text-xs mt-2 ${
+                    isDark ? 'text-blue-400' : 'text-blue-600'
+                  }`}>
+                    {usuarioLogado?.perfil === 'admin' 
+                      ? '💡 Como administrador, você pode configurar qualquer setor.'
+                      : '🔒 Você só pode configurar seu próprio setor.'
+                    }
+                  </p>
                 </div>
+
+                {/* Configuração do setor selecionado - COM VALIDAÇÃO DE ACESSO */}
+                {temPermissaoSetor(setorSelecionadoConfig) ? (
+                  <div className={`p-6 rounded-xl border-2 ${
+                    isDark 
+                      ? 'bg-slate-700 border-slate-600' 
+                      : 'bg-slate-50 border-slate-200'
+                  }`}>
+                    <h3 className={`font-bold text-lg mb-4 ${
+                      isDark ? 'text-white' : 'text-slate-800'
+                    }`}>
+                      ⚙️ Editando: {setorSelecionadoConfig}
+                    </h3>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      {Object.entries(descontosPorSetor[setorSelecionadoConfig]).map(([tipo, valor]) => (
+                        <div key={tipo}>
+                          <Label className={`text-xs font-semibold mb-2 block ${
+                            isDark ? 'text-slate-300' : 'text-slate-600'
+                          }`}>
+                            {tipo === 'quitacao' ? 'Quitação (%)' :
+                             tipo === 'juncao' ? 'Junção (%)' :
+                             tipo === 'pixAutomatico' ? 'PIX Auto (%)' :
+                             tipo === 'cartaoRecorrente' ? 'Cartão Rec. (%)' :
+                             tipo === 'semestral' ? 'Semestral (%)' :
+                             'Anual (%)'}
+                          </Label>
+                          <Input
+                            type="number"
+                            value={valor}
+                            onChange={(e) => {
+                              const novoValor = parseFloat(e.target.value) || 0;
+                              setDescontosPorSetor(prev => ({
+                                ...prev,
+                                [setorSelecionadoConfig]: {
+                                  ...prev[setorSelecionadoConfig],
+                                  [tipo]: novoValor
+                                }
+                              }));
+                            }}
+                            className={`h-10 rounded-lg border-2 text-center font-semibold ${
+                              isDark 
+                                ? 'bg-slate-600 border-slate-500 text-white focus:border-blue-500' 
+                                : 'bg-white border-slate-300 text-slate-800 focus:border-blue-500'
+                            }`}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    
+                    {/* Indicador de salvamento automático */}
+                    <div className={`mt-4 p-3 rounded-lg ${
+                      isDark 
+                        ? 'bg-green-900/30 border border-green-700' 
+                        : 'bg-green-50 border border-green-200'
+                    }`}>
+                      <p className={`text-sm ${
+                        isDark ? 'text-green-300' : 'text-green-700'
+                      }`}>
+                        ✅ <strong>Alterações salvas automaticamente!</strong> Os novos percentuais já estão sendo aplicados nos cálculos.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className={`p-6 rounded-xl border-2 ${
+                    isDark 
+                      ? 'bg-red-900/20 border-red-700' 
+                      : 'bg-red-50 border-red-200'
+                  }`}>
+                    <div className="text-center">
+                      <Lock className={`h-12 w-12 mx-auto mb-4 ${
+                        isDark ? 'text-red-400' : 'text-red-500'
+                      }`} />
+                      <h3 className={`font-bold text-lg mb-2 ${
+                        isDark ? 'text-red-400' : 'text-red-600'
+                      }`}>
+                        Acesso Negado
+                      </h3>
+                      <p className={`text-sm ${
+                        isDark ? 'text-red-300' : 'text-red-600'
+                      }`}>
+                        Você não tem permissão para configurar este setor.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Visualização de setores permitidos apenas para admin */}
+                {usuarioLogado?.perfil === 'admin' && (
+                  <div className="mt-8">
+                    <h3 className={`font-bold text-lg mb-4 ${
+                      isDark ? 'text-white' : 'text-slate-800'
+                    }`}>
+                      📊 Resumo Geral de Configurações
+                    </h3>
+                    <div className="grid gap-6">
+                      {Object.entries(descontosPorSetor).map(([setor, descontos]) => (
+                        <div key={setor} className={`p-6 rounded-xl border-2 ${
+                          setor === setorSelecionadoConfig 
+                            ? (isDark ? 'bg-blue-900/30 border-blue-600' : 'bg-blue-50 border-blue-300')
+                            : (isDark ? 'bg-slate-700 border-slate-600' : 'bg-slate-50 border-slate-200')
+                        }`}>
+                          <h3 className={`font-bold text-lg mb-4 ${
+                            isDark ? 'text-white' : 'text-slate-800'
+                          }`}>
+                            {setor} {setor === setorSelecionadoConfig ? '← Selecionado' : ''}
+                          </h3>
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                            {Object.entries(descontos).map(([tipo, valor]) => (
+                              <div key={tipo}>
+                                <Label className={`text-xs font-semibold mb-2 block ${
+                                  isDark ? 'text-slate-300' : 'text-slate-600'
+                                }`}>
+                                  {tipo === 'quitacao' ? 'Quitação (%)' :
+                                   tipo === 'juncao' ? 'Junção (%)' :
+                                   tipo === 'pixAutomatico' ? 'PIX Auto (%)' :
+                                   tipo === 'cartaoRecorrente' ? 'Cartão Rec. (%)' :
+                                   tipo === 'semestral' ? 'Semestral (%)' :
+                                   'Anual (%)'}
+                                </Label>
+                                <div className={`h-10 rounded-lg border-2 text-center font-semibold flex items-center justify-center ${
+                                  isDark 
+                                    ? 'bg-slate-600 border-slate-500 text-white' 
+                                    : 'bg-white border-slate-300 text-slate-800'
+                                }`}>
+                                  {valor}%
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -1025,8 +1642,8 @@ const Index = () => {
                   {/* Propósito */}
                   <div className={`p-6 rounded-xl ${
                     isDark 
-                      ? 'bg-gradient-to-r from-blue-900/30 to-purple-900/30 border border-slate-600' 
-                      : 'bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200'
+                      ? 'bg-gradient-to-r from-blue-900/30 to-green-900/30 border border-slate-600' 
+                      : 'bg-gradient-to-r from-blue-50 to-green-50 border border-blue-200'
                   }`}>
                     <h3 className={`font-bold text-lg mb-3 ${
                       isDark ? 'text-blue-400' : 'text-blue-700'
@@ -1113,54 +1730,7 @@ const Index = () => {
                     </div>
                   </div>
 
-                  {/* Regras de Negócio */}
-                  <div className={`p-6 rounded-xl ${
-                    isDark 
-                      ? 'bg-slate-700 border border-slate-600' 
-                      : 'bg-slate-50 border border-slate-200'
-                  }`}>
-                    <h3 className={`font-bold text-lg mb-4 ${
-                      isDark ? 'text-purple-400' : 'text-purple-600'
-                    }`}>
-                      ⚙️ Regras de Negócio
-                    </h3>
-                    
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div className={`p-4 rounded-lg ${
-                        isDark ? 'bg-slate-600/50' : 'bg-white'
-                      }`}>
-                        <h4 className={`font-semibold mb-3 ${
-                          isDark ? 'text-purple-300' : 'text-purple-700'
-                        }`}>
-                          Junção
-                        </h4>
-                        <ul className={`text-sm space-y-1 ${
-                          isDark ? 'text-slate-300' : 'text-slate-600'
-                        }`}>
-                          <li>• Aparece com <strong>menos de 3 parcelas em atraso</strong></li>
-                          <li>• <strong>EM DIA:</strong> 2 parcelas (mês atual + próximo)</li>
-                          <li>• <strong>Outros:</strong> Parcelas em atraso + 1 a vencer</li>
-                        </ul>
-                      </div>
-                      
-                      <div className={`p-4 rounded-lg ${
-                        isDark ? 'bg-slate-600/50' : 'bg-white'
-                      }`}>
-                        <h4 className={`font-semibold mb-3 ${
-                          isDark ? 'text-blue-300' : 'text-blue-700'
-                        }`}>
-                          Semestral e Anual
-                        </h4>
-                        <ul className={`text-sm space-y-1 ${
-                          isDark ? 'text-slate-300' : 'text-slate-600'
-                        }`}>
-                          <li>• <strong>Semestral:</strong> Mínimo 6 parcelas</li>
-                          <li>• <strong>Anual:</strong> Mínimo 12 parcelas</li>
-                          <li>• Não aparecem se "Todas em atraso"</li>
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
+
                 </CardContent>
               </Card>
 
