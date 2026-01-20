@@ -28,14 +28,14 @@ interface UsuarioLogado {
 
 // Base de usuários do sistema
 const USUARIOS: Usuario[] = [
-  { login: "receptivo", senha: "admin123", setor: "TODOS", perfil: "admin", nome: "Receptivo (Administrador)" },
-  { login: "setor1", senha: "123", setor: "EM DIA", perfil: "setor", nome: "Setor EM DIA" },
-  { login: "setor2", senha: "123", setor: "PLAY 1", perfil: "setor", nome: "Setor PLAY 1" },
-  { login: "setor3", senha: "123", setor: "PLAY 2", perfil: "setor", nome: "Setor PLAY 2" },
-  { login: "setor4", senha: "123", setor: "PLAY 3", perfil: "setor", nome: "Setor PLAY 3" },
-  { login: "setor5", senha: "123", setor: "PLAY 4", perfil: "setor", nome: "Setor PLAY 4" },
-  { login: "setor6", senha: "123", setor: "PLAY 5", perfil: "setor", nome: "Setor PLAY 5" },
-  { login: "setor7", senha: "123", setor: "PLAY 6", perfil: "setor", nome: "Setor PLAY 6" }
+  { login: "Receptivo", senha: "calcReceps34", setor: "TODOS", perfil: "admin", nome: "Receptivo" },
+  { login: "EmDia", senha: "Emdia_2026", setor: "EM DIA", perfil: "setor", nome: "Setor EM DIA" },
+  { login: "Play1", senha: "play1_2026", setor: "PLAY 1", perfil: "setor", nome: "Setor PLAY 1" },
+  { login: "Play2", senha: "play2_2026", setor: "PLAY 2", perfil: "setor", nome: "Setor PLAY 2" },
+  { login: "Play3", senha: "play3_2026", setor: "PLAY 3", perfil: "setor", nome: "Setor PLAY 3" },
+  { login: "Play4", senha: "play4_2026", setor: "PLAY 4", perfil: "setor", nome: "Setor PLAY 4" },
+  { login: "Play5", senha: "play5_2026", setor: "PLAY 5", perfil: "setor", nome: "Setor PLAY 5" },
+  { login: "Play6", senha: "play6_2026", setor: "PLAY 6", perfil: "setor", nome: "Setor PLAY 6" }
 ];
 
 // Componente de Login
