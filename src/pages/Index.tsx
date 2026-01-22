@@ -267,8 +267,8 @@ const Index = () => {
     },
     "PLAY 2": {
       quitacao: 35,
-      juncao: 25,
-      semestral: 20,
+      juncao: 18,
+      semestral: 18,
       anual: 25
     },
     "PLAY 3": {
