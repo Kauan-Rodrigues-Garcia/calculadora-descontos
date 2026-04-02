@@ -8,16 +8,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Copy, Calculator, Settings, Moon, Sun, HelpCircle, User, ExternalLink, FileText, CheckCircle, BarChart3, Target, Minus, Plus, ChevronDown, ChevronUp, Lock, LogOut, Shield, Eye, EyeOff } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { supabase } from "@/lib/supabaseClient";
 
 // Tipos para autenticação
-interface Usuario {
-  login: string;
-  senha: string;
-  setor: string;
-  perfil: 'admin' | 'setor';
-  nome: string;
-}
-
 interface UsuarioLogado {
   login: string;
   setor: string;
@@ -26,22 +19,15 @@ interface UsuarioLogado {
   setoresPermitidos: string[];
 }
 
-// Base de usuários do sistema
-const USUARIOS: Usuario[] = [
-  { login: "Receptivo", senha: "calcReceps34", setor: "TODOS", perfil: "admin", nome: "Receptivo" },
-  { login: "EmDia", senha: "Emdia_2026", setor: "EM DIA", perfil: "setor", nome: "Setor EM DIA" },
-  { login: "Play1", senha: "play1_2026", setor: "PLAY 1", perfil: "setor", nome: "Setor PLAY 1" },
-  { login: "Play2", senha: "play2_2026", setor: "PLAY 2", perfil: "setor", nome: "Setor PLAY 2" },
-  { login: "Play3", senha: "play3_2026", setor: "PLAY 3", perfil: "setor", nome: "Setor PLAY 3" },
-  { login: "Play4", senha: "play4_2026", setor: "PLAY 4", perfil: "setor", nome: "Setor PLAY 4" },
-  { login: "Play5", senha: "play5_2026", setor: "PLAY 5", perfil: "setor", nome: "Setor PLAY 5" },
-  { login: "Play6", senha: "play6_2026", setor: "PLAY 6", perfil: "setor", nome: "Setor PLAY 6" }
-];
+const SETORES_DISPONIVEIS = ["EM DIA", "PLAY 1", "PLAY 2", "PLAY 3", "PLAY 4", "PLAY 5", "PLAY 6"];
 
-// Componente de Login
+// Componente de Login / Registro
 const LoginForm = ({ onLogin, isDark }: { onLogin: (usuario: UsuarioLogado) => void; isDark: boolean }) => {
-  const [login, setLogin] = useState("");
+  const [isRegistro, setIsRegistro] = useState(false);
+  const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
+  const [nome, setNome] = useState("");
+  const [setor, setSetor] = useState("EM DIA");
   const [mostrarSenha, setMostrarSenha] = useState(false);
   const [carregando, setCarregando] = useState(false);
   const { toast } = useToast();
@@ -50,37 +36,80 @@ const LoginForm = ({ onLogin, isDark }: { onLogin: (usuario: UsuarioLogado) => v
     e.preventDefault();
     setCarregando(true);
 
-    // Simular delay de autenticação
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password: senha });
 
-    const usuario = USUARIOS.find(u => u.login === login && u.senha === senha);
+    if (error || !data.user) {
+      toast({
+        title: "Erro de autenticação",
+        description: error?.message || "Email ou senha incorretos",
+        variant: "destructive"
+      });
+      setCarregando(false);
+      return;
+    }
 
-    if (usuario) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', data.user.id)
+      .single();
+
+    if (profile) {
       const usuarioLogado: UsuarioLogado = {
-        login: usuario.login,
-        setor: usuario.setor,
-        perfil: usuario.perfil,
-        nome: usuario.nome,
-        setoresPermitidos: usuario.perfil === 'admin' 
-          ? ["EM DIA", "PLAY 1", "PLAY 2", "PLAY 3", "PLAY 4", "PLAY 5", "PLAY 6"]
-          : [usuario.setor]
+        login: data.user.email || email,
+        setor: profile.setor,
+        perfil: profile.perfil as 'admin' | 'setor',
+        nome: profile.nome,
+        setoresPermitidos: profile.setores_permitidos
       };
-
-      // Salvar no localStorage para persistência
-      localStorage.setItem('calculadora_usuario', JSON.stringify(usuarioLogado));
-      
       toast({
         title: "Login realizado com sucesso!",
-        description: `Bem-vindo, ${usuario.nome}`,
+        description: `Bem-vindo, ${profile.nome}`,
       });
-
       onLogin(usuarioLogado);
     } else {
       toast({
-        title: "Erro de autenticação",
-        description: "Login ou senha incorretos",
+        title: "Erro ao carregar perfil",
+        description: "Não foi possível carregar os dados do usuário",
         variant: "destructive"
       });
+    }
+
+    setCarregando(false);
+  };
+
+  const handleRegistro = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCarregando(true);
+
+    const { error } = await supabase.auth.signUp({
+      email,
+      password: senha,
+      options: {
+        data: {
+          nome,
+          setor,
+          perfil: 'setor',
+          setores_permitidos: [setor]
+        }
+      }
+    });
+
+    if (error) {
+      const descricao = error.message.includes('Database error saving new user')
+        ? `Erro interno ao salvar usuário: ${error.message}. Verifique se o banco de dados está configurado corretamente.`
+        : error.message;
+      toast({
+        title: "Erro ao criar conta",
+        description: descricao,
+        variant: "destructive"
+      });
+    } else {
+      toast({
+        title: "Conta criada com sucesso!",
+        description: "Verifique seu email para confirmar o cadastro, depois faça login.",
+      });
+      setIsRegistro(false);
     }
 
     setCarregando(false);
@@ -108,29 +137,54 @@ const LoginForm = ({ onLogin, isDark }: { onLogin: (usuario: UsuarioLogado) => v
           <CardTitle className={`text-2xl font-bold ${
             isDark ? 'text-white' : 'text-slate-800'
           }`}>
-            Acesso Restrito
+            {isRegistro ? 'Criar Conta' : 'Acesso Restrito'}
           </CardTitle>
           <p className={`text-sm ${
             isDark ? 'text-slate-300' : 'text-slate-600'
           }`}>
-            Faça login para acessar a Calculadora de Descontos
+            {isRegistro
+              ? 'Preencha os dados para criar sua conta'
+              : 'Faça login para acessar a Calculadora de Descontos'}
           </p>
         </CardHeader>
         
         <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={isRegistro ? handleRegistro : handleLogin} className="space-y-4">
+            {isRegistro && (
+              <div>
+                <Label htmlFor="nome" className={`text-sm font-semibold mb-2 block ${
+                  isDark ? 'text-slate-200' : 'text-slate-700'
+                }`}>
+                  Nome
+                </Label>
+                <Input
+                  id="nome"
+                  type="text"
+                  value={nome}
+                  onChange={(e) => setNome(e.target.value)}
+                  placeholder="Digite seu nome"
+                  required
+                  className={`h-12 rounded-xl border-2 transition-all ${
+                    isDark 
+                      ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400 hover:border-blue-500 focus:border-blue-500' 
+                      : 'bg-white border-slate-300 text-slate-800 placeholder-slate-500 hover:border-blue-500 focus:border-blue-500'
+                  }`}
+                />
+              </div>
+            )}
+
             <div>
-              <Label htmlFor="login" className={`text-sm font-semibold mb-2 block ${
+              <Label htmlFor="email" className={`text-sm font-semibold mb-2 block ${
                 isDark ? 'text-slate-200' : 'text-slate-700'
               }`}>
-                Login
+                Email
               </Label>
               <Input
-                id="login"
-                type="text"
-                value={login}
-                onChange={(e) => setLogin(e.target.value)}
-                placeholder="Digite seu login"
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Digite seu email"
                 required
                 className={`h-12 rounded-xl border-2 transition-all ${
                   isDark 
@@ -174,6 +228,32 @@ const LoginForm = ({ onLogin, isDark }: { onLogin: (usuario: UsuarioLogado) => v
               </div>
             </div>
 
+            {isRegistro && (
+              <>
+                <div>
+                  <Label htmlFor="setor" className={`text-sm font-semibold mb-2 block ${
+                    isDark ? 'text-slate-200' : 'text-slate-700'
+                  }`}>
+                    Setor
+                  </Label>
+                  <Select value={setor} onValueChange={setSetor}>
+                    <SelectTrigger className={`h-12 rounded-xl border-2 transition-all ${
+                      isDark 
+                        ? 'bg-slate-700 border-slate-600 text-white hover:border-blue-500 focus:border-blue-500' 
+                        : 'bg-white border-slate-300 text-slate-800 hover:border-blue-500 focus:border-blue-500'
+                    }`}>
+                      <SelectValue placeholder="Selecione o setor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SETORES_DISPONIVEIS.map(s => (
+                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            )}
+
             <Button 
               type="submit"
               disabled={carregando}
@@ -186,18 +266,28 @@ const LoginForm = ({ onLogin, isDark }: { onLogin: (usuario: UsuarioLogado) => v
               {carregando ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Autenticando...
+                  {isRegistro ? 'Criando conta...' : 'Autenticando...'}
                 </>
               ) : (
                 <>
                   <Lock className="h-4 w-4 mr-2" />
-                  Entrar
+                  {isRegistro ? 'Criar Conta' : 'Entrar'}
                 </>
               )}
             </Button>
           </form>
 
-
+          <div className="mt-4 text-center">
+            <button
+              type="button"
+              onClick={() => setIsRegistro(!isRegistro)}
+              className={`text-sm underline cursor-pointer ${
+                isDark ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'
+              }`}
+            >
+              {isRegistro ? 'Já tenho conta' : 'Criar conta'}
+            </button>
+          </div>
         </CardContent>
       </Card>
     </div>
@@ -230,19 +320,49 @@ const Index = () => {
   const [mensagemAtual, setMensagemAtual] = useState(1); // 1, 2 ou 3
   const [mensagensCalculadas, setMensagensCalculadas] = useState<{[key: number]: string}>({});
 
-  // Verificar se há usuário logado no localStorage
-  useEffect(() => {
-    const usuarioSalvo = localStorage.getItem('calculadora_usuario');
-    if (usuarioSalvo) {
-      const usuario = JSON.parse(usuarioSalvo);
+  // Carregar perfil do usuário a partir da sessão Supabase
+  const carregarPerfil = async (userId: string, userEmail: string) => {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+
+    if (profile) {
+      const usuario: UsuarioLogado = {
+        login: userEmail,
+        setor: profile.setor,
+        perfil: profile.perfil as 'admin' | 'setor',
+        nome: profile.nome,
+        setoresPermitidos: profile.setores_permitidos
+      };
       setUsuarioLogado(usuario);
-      
-      // Se for usuário de setor específico, definir automaticamente
       if (usuario.perfil === 'setor') {
         setSetor(usuario.setor);
         setSetorSelecionadoConfig(usuario.setor);
       }
     }
+  };
+
+  // Verificar sessão ativa ao montar e monitorar mudanças de autenticação
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        carregarPerfil(session.user.id, session.user.email || '');
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        carregarPerfil(session.user.id, session.user.email || '');
+      } else {
+        setUsuarioLogado(null);
+        setSetor("");
+        setSetorSelecionadoConfig("EM DIA");
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const toggleTheme = () => {
@@ -317,8 +437,8 @@ const Index = () => {
   };
 
   // Função de logout
-  const handleLogout = () => {
-    localStorage.removeItem('calculadora_usuario');
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     setUsuarioLogado(null);
     setSetor("");
     setSetorSelecionadoConfig("EM DIA");
