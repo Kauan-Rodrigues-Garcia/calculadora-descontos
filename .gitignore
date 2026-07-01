@@ -99,3 +99,7 @@ Thumbs.db
 # --- Uploaded Files ---
 uploaded_files/
 
+# --- Arquivos de backup (não versionar) ---
+*.backup
+*_backup.tsx
+
