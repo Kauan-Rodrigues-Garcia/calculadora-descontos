@@ -1,20 +1,19 @@
 import type { Dispatch, SetStateAction } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Settings, Lock } from "lucide-react";
-import { type DescontosSetor } from "@/lib/calculos";
+import { CAMPOS_DESCONTO, type DescontosSetor } from "@/lib/calculos";
+import { CampoPercentual } from "@/components/Campos";
 import { type UsuarioLogado } from "@/lib/auth";
 
-const ROTULO_DESCONTO: Record<string, string> = {
-  quitacao: "Quitação (%)",
-  juncao: "Junção (%)",
-  pixAutomatico: "PIX Auto (%)",
-  cartaoRecorrente: "Cartão Rec. (%)",
-  semestral: "Semestral (%)",
-  anual: "Anual (%)",
-};
+const ROTULO_DESCONTO: Record<string, string> = Object.fromEntries(
+  CAMPOS_DESCONTO.map((c) => [c.chave, `${c.rotulo} (%)`]),
+);
+
+/** Os percentuais do setor, na ordem da tela (cartão recorrente só existe no EM DIA). */
+const camposDo = (d: DescontosSetor) =>
+  CAMPOS_DESCONTO.filter((c) => d[c.chave] !== undefined).map((c) => [c.chave, d[c.chave] ?? 0] as const);
 
 interface AbaConfiguracoesProps {
   isDark: boolean;
@@ -112,18 +111,16 @@ const AbaConfiguracoes = ({
               ⚙️ Editando: {setorSelecionadoConfig}
             </h3>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {Object.entries(descontosPorSetor[setorSelecionadoConfig]).map(([tipo, valor]) => (
+              {camposDo(descontosPorSetor[setorSelecionadoConfig]).map(([tipo, valor]) => (
                 <div key={tipo}>
                   <Label className={`text-xs font-semibold mb-2 block ${
                     isDark ? 'text-slate-300' : 'text-slate-600'
                   }`}>
                     {ROTULO_DESCONTO[tipo] ?? `${tipo} (%)`}
                   </Label>
-                  <Input
-                    type="number"
-                    value={valor}
-                    onChange={(e) => {
-                      const novoValor = parseFloat(e.target.value) || 0;
+                  <CampoPercentual
+                    valor={valor}
+                    aoMudar={(novoValor) => {
                       setDescontosPorSetor(prev => ({
                         ...prev,
                         [setorSelecionadoConfig]: {
@@ -151,7 +148,7 @@ const AbaConfiguracoes = ({
               <p className={`text-sm ${
                 isDark ? 'text-green-300' : 'text-green-700'
               }`}>
-                ✅ <strong>Alterações salvas automaticamente!</strong> Os novos percentuais já estão sendo aplicados nos cálculos.
+                ✅ <strong>Alterações salvas automaticamente neste navegador!</strong> Os novos percentuais valem a partir do próximo cálculo.
               </p>
             </div>
           </div>
@@ -200,7 +197,7 @@ const AbaConfiguracoes = ({
                     {setor} {setor === setorSelecionadoConfig ? '← Selecionado' : ''}
                   </h3>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    {Object.entries(descontos).map(([tipo, valor]) => (
+                    {camposDo(descontos).map(([tipo, valor]) => (
                       <div key={tipo}>
                         <Label className={`text-xs font-semibold mb-2 block ${
                           isDark ? 'text-slate-300' : 'text-slate-600'

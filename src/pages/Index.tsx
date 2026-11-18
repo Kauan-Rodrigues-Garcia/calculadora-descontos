@@ -1,14 +1,19 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Calculator, Moon, Sun, Lock, LogOut } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  parseValorMonetario,
   construirOpcoes,
-  montarMensagemPrincipal,
-  gerarMensagemSetor2EmDiante,
-  gerarMensagemSetor3EmDiante,
+  opcoesAtivasPorPadrao,
+  montarMensagem,
+  setorTemVariantes,
+  validarEntradas,
+  validarAcordo,
+  gerarMensagemAcordoAtivo,
+  mesclarDescontosSetor,
+  mesclarDescontosAcordo,
+  type CampoEntrada,
   type DescontosSetor,
   type DescontosAcordo,
   type OpcaoCalculada,
@@ -37,7 +42,6 @@ const Index = () => {
   const [valorTotal, setValorTotal] = useState("");
   const [valorParcela, setValorParcela] = useState("");
   const [parcelasAtraso, setParcelasAtraso] = useState("");
-  const [mensagem, setMensagem] = useState("");
   const [isDark, setIsDark] = useState<boolean>(() => lerStorage<boolean>('calculadora_tema_dark', true));
   const { toast } = useToast();
 
@@ -46,18 +50,25 @@ const Index = () => {
   const [valorParcelaAcordo, setValorParcelaAcordo] = useState("");
   const [parcelasRestantes, setParcelasRestantes] = useState("");
   const [mensagemAcordo, setMensagemAcordo] = useState("");
+  const [entradasDoAcordo, setEntradasDoAcordo] = useState<string | null>(null);
+  const [errosAcordo, setErrosAcordo] = useState<Partial<Record<"valorParcela" | "parcelasRestantes", string>>>({});
   const [isMinimized, setIsMinimized] = useState(false);
 
   // Estado para o setor selecionado na configuração
   const [setorSelecionadoConfig, setSetorSelecionadoConfig] = useState("EM DIA");
 
-  // Estados para o sistema de mensagens
-  const [mensagemAtual, setMensagemAtual] = useState(1); // 1, 2 ou 3
-  const [mensagensCalculadas, setMensagensCalculadas] = useState<{[key: number]: string}>({});
+  // Versão da mensagem: 1, 2 ou 3 (2 e 3 só existem do PLAY 2 em diante)
+  const [mensagemAtual, setMensagemAtual] = useState(1);
 
-  // Opções de pagamento calculadas e quais estão marcadas para entrar na mensagem
-  const [opcoesCalculadas, setOpcoesCalculadas] = useState<OpcaoCalculada[]>([]);
+  // Resultado do último cálculo, junto com os dados que o geraram (para saber se ficou desatualizado)
+  const [resultado, setResultado] = useState<{
+    setor: string;
+    entradas: string;
+    opcoes: OpcaoCalculada[];
+    valorTotalNum: number;
+  } | null>(null);
   const [opcoesAtivas, setOpcoesAtivas] = useState<OpcaoId[]>([]);
+  const [erros, setErros] = useState<Partial<Record<CampoEntrada, string>>>({});
 
   // Verificar se há usuário logado no localStorage
   useEffect(() => {
@@ -83,26 +94,15 @@ const Index = () => {
     setIsDark(!isDark);
   };
 
-  // Configuração dos descontos por setor (com persistência em localStorage)
+  // Configuração dos descontos por setor (com persistência em localStorage).
+  // O que faltar no que foi salvo (setor ou desconto novo) vem dos padrões em lib/calculos.ts.
   const [descontosPorSetor, setDescontosPorSetor] = useState<Record<string, DescontosSetor>>(() =>
-    lerStorage<Record<string, DescontosSetor>>('calculadora_descontos_setor', {
-      "EM DIA": { quitacao: 20, juncao: 5, pixAutomatico: 10, cartaoRecorrente: 8, semestral: 6, anual: 12 },
-      "PLAY 1": { quitacao: 25, juncao: 12, semestral: 8, anual: 18 },
-      "PLAY 2": { quitacao: 35, juncao: 18, semestral: 18, anual: 25 },
-      "PLAY 3": { quitacao: 45, juncao: 15, semestral: 0, anual: 0 },
-      "PLAY 4": { quitacao: 45, juncao: 15, semestral: 0, anual: 0 },
-      "PLAY 5": { quitacao: 45, juncao: 15, semestral: 0, anual: 0 },
-      "PLAY 6": { quitacao: 45, juncao: 15, semestral: 0, anual: 0 },
-    }),
+    mesclarDescontosSetor(lerStorage<unknown>('calculadora_descontos_setor', null)),
   );
 
   // Configuração dos descontos para Acordos Ativos (com persistência em localStorage)
   const [descontosAcordosAtivos, setDescontosAcordosAtivos] = useState<DescontosAcordo>(() =>
-    lerStorage<DescontosAcordo>('calculadora_descontos_acordo', {
-      quitacao: 30,
-      juncao: 10,
-      atrasoParcelaVencer: 5,
-    }),
+    mesclarDescontosAcordo(lerStorage<unknown>('calculadora_descontos_acordo', null)),
   );
 
   // Salva as configurações sempre que mudarem, tornando reais as "alterações automáticas"
@@ -118,6 +118,21 @@ const Index = () => {
   useEffect(() => {
     localStorage.setItem('calculadora_tema_dark', JSON.stringify(isDark));
   }, [isDark]);
+
+  // A mensagem sai sempre do resultado + opções marcadas + versão escolhida
+  const mensagem = useMemo(
+    () =>
+      resultado
+        ? montarMensagem(resultado.setor, mensagemAtual, resultado.opcoes, opcoesAtivas, resultado.valorTotalNum)
+        : "",
+    [resultado, mensagemAtual, opcoesAtivas],
+  );
+
+  // Se algum dado mudou depois do cálculo, a mensagem não vale mais
+  const assinaturaAtual = JSON.stringify({ setor, valorTotal, valorParcela, parcelasAtraso, descontos: descontosPorSetor[setor] });
+  const desatualizado = !!resultado && resultado.entradas !== assinaturaAtual;
+  const assinaturaAcordo = JSON.stringify({ valorParcelaAcordo, parcelasRestantes, descontosAcordosAtivos });
+  const acordoDesatualizado = !!mensagemAcordo && entradasDoAcordo !== assinaturaAcordo;
 
   // Função para verificar permissão de acesso ao setor
   const temPermissaoSetor = (setorVerificar: string): boolean => {
@@ -165,6 +180,7 @@ const Index = () => {
       return;
     }
     setSetor(novoSetor);
+    setErros((e) => ({ ...e, setor: undefined }));
   };
 
   // Validação de segurança para configuração
@@ -187,7 +203,7 @@ const Index = () => {
 
   const calcularTodosDescontos = () => {
     // Validação de segurança
-    if (!temPermissaoSetor(setor)) {
+    if (setor && !temPermissaoSetor(setor)) {
       toast({
         title: "Acesso negado",
         description: "Você não tem permissão para calcular descontos deste setor",
@@ -196,69 +212,31 @@ const Index = () => {
       return;
     }
 
-    if (setor === "EM DIA") {
-      if (!valorTotal || !valorParcela) {
-        toast({
-          title: "Campos obrigatórios",
-          description: "Preencha o valor total e valor da parcela",
-          variant: "destructive"
-        });
-        return;
-      }
+    // Campos: valor que não dá para entender vira erro no campo, nunca zero
+    const validacao = validarEntradas(setor, { valorTotal, valorParcela, parcelasAtraso });
+    if ("erros" in validacao) {
+      setErros(validacao.erros);
+      toast({
+        title: "Confira os campos",
+        description: Object.values(validacao.erros)[0],
+        variant: "destructive"
+      });
+      return;
     }
-    else if (setor === "PLAY 6") {
-      if (!valorTotal) {
-        toast({
-          title: "Campos obrigatórios",
-          description: "Preencha o valor total",
-          variant: "destructive"
-        });
-        return;
-      }
-    }
-    else {
-      if (!setor || !valorTotal || !valorParcela) {
-        toast({
-          title: "Campos obrigatórios",
-          description: "Preencha o setor, valor total e valor da parcela",
-          variant: "destructive"
-        });
-        return;
-      }
-    }
+    setErros({});
 
-    const valorParcelaNum = parseValorMonetario(valorParcela);
-    const parcelasAtrasoNum = parcelasAtraso ? parseInt(parcelasAtraso) : 0;
-    const valorTotalNum = parseValorMonetario(valorTotal);
-    const descontosSetor = descontosPorSetor[setor];
-
-    // Monta as opções aplicáveis e marca todas por padrão
-    const opcoes = construirOpcoes({ setor, valorTotalNum, valorParcelaNum, parcelasAtrasoNum, descontosSetor });
-    const ativos = opcoes.map((o) => o.id);
-    setOpcoesCalculadas(opcoes);
-    setOpcoesAtivas(ativos);
-
-    const mensagemPrincipal = montarMensagemPrincipal(setor, opcoes, ativos);
-
-    // Gerar mensagens por setor (a 1ª é a principal, montada a partir das opções)
-    const mensagensGeradas: { [key: number]: string } = {};
-    mensagensGeradas[1] = mensagemPrincipal;
-
-    if (setor === "PLAY 3" || setor === "PLAY 4" || setor === "PLAY 5" || setor === "PLAY 6") {
-      mensagensGeradas[2] = gerarMensagemSetor3EmDiante(2, valorTotalNum, descontosSetor);
-      mensagensGeradas[3] = gerarMensagemSetor3EmDiante(3, valorTotalNum, descontosSetor);
-    } else if (setor === "PLAY 2") {
-      mensagensGeradas[2] = gerarMensagemSetor2EmDiante(2, valorTotalNum, valorParcelaNum, descontosSetor, parcelasAtrasoNum);
-      mensagensGeradas[3] = gerarMensagemSetor2EmDiante(3, valorTotalNum, valorParcelaNum, descontosSetor, parcelasAtrasoNum);
-    } else {
-      mensagensGeradas[2] = mensagemPrincipal;
-      mensagensGeradas[3] = mensagemPrincipal;
-    }
-
-    setMensagensCalculadas(mensagensGeradas);
+    const opcoes = construirOpcoes({
+      setor,
+      valorTotalNum: validacao.valorTotalNum,
+      valorParcelaNum: validacao.valorParcelaNum,
+      parcelasAtrasoNum: validacao.parcelasAtrasoNum,
+      descontosSetor: descontosPorSetor[setor],
+    });
+    setResultado({ setor, entradas: assinaturaAtual, opcoes, valorTotalNum: validacao.valorTotalNum });
+    // Opções com 0% (parcela e PIX Automático) vêm desmarcadas
+    setOpcoesAtivas(opcoesAtivasPorPadrao(opcoes));
     setMensagemAtual(1);
-    setMensagem(mensagensGeradas[1] || mensagemPrincipal);
-    
+
     toast({
       title: "Cálculo realizado!",
       description: "Mensagem gerada com sucesso"
@@ -295,20 +273,19 @@ const Index = () => {
     setValorTotal("");
     setValorParcela("");
     setParcelasAtraso("");
-    setMensagem("");
-    setMensagensCalculadas({});
-    setMensagemAtual(1);
-    setOpcoesCalculadas([]);
+    setResultado(null);
     setOpcoesAtivas([]);
+    setMensagemAtual(1);
+    setErros({});
     toast({
       title: "Campos limpos!",
       description: "Todos os campos foram limpos com sucesso"
     });
   };
 
-  // Função para trocar mensagem
+  // Função para trocar mensagem (versões 1, 2 e 3)
   const trocarMensagem = () => {
-    if (Object.keys(mensagensCalculadas).length === 0) {
+    if (!resultado) {
       toast({
         title: "Nenhuma mensagem calculada",
         description: "Calcule os descontos primeiro",
@@ -316,90 +293,40 @@ const Index = () => {
       });
       return;
     }
-    
+
     const proximaMensagem = mensagemAtual === 3 ? 1 : mensagemAtual + 1;
     setMensagemAtual(proximaMensagem);
-    setMensagem(mensagensCalculadas[proximaMensagem] || "");
-    
+
     toast({
       title: `Mensagem ${proximaMensagem}`,
       description: "Mensagem alterada com sucesso"
     });
   };
 
-  // Marca/desmarca uma opção e reconstrói a Mensagem 1 (lista de opções)
+  // Marca/desmarca uma opção; as três versões da mensagem usam as mesmas opções marcadas
   const toggleOpcao = (id: OpcaoId) => {
-    setOpcoesAtivas((prev) => {
-      const proximos = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
-      const novaMensagem = montarMensagemPrincipal(setor, opcoesCalculadas, proximos);
-      setMensagensCalculadas((mc) => ({ ...mc, 1: novaMensagem }));
-      if (mensagemAtual === 1) setMensagem(novaMensagem);
-      return proximos;
-    });
+    setOpcoesAtivas((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
   // Os geradores de mensagem por setor estão em src/lib/calculos.ts
 
-  // Função para calcular acordos ativos seguindo a lógica correta
+  // Função para calcular acordos ativos (texto em lib/calculos.ts)
   const calcularAcordoAtivo = () => {
-    if (!valorParcelaAcordo || !parcelasRestantes) {
+    const validacao = validarAcordo(valorParcelaAcordo, parcelasRestantes);
+    if ("erros" in validacao) {
+      setErrosAcordo(validacao.erros);
       toast({
-        title: "Campos obrigatórios",
-        description: "Preencha o valor da parcela e parcelas restantes",
+        title: "Confira os campos",
+        description: Object.values(validacao.erros)[0],
         variant: "destructive"
       });
       return;
     }
-
-    const valorParcelaNum = parseValorMonetario(valorParcelaAcordo);
-    const parcelasRestantesNum = parseInt(parcelasRestantes) || 0;
-    
-    // Cálculo do total do acordo: valorTotal = valorParcela × parcelasRestantes
-    const valorTotal = valorParcelaNum * parcelasRestantesNum;
-    
-    let mensagemGerada = "";
-    let numeroOpcao = 1;
-
-    mensagemGerada += "Segue as opções para seu acordo ativo:\n\n";
-
-    // 1. QUITAÇÃO À VISTA (PIX/Boleto) - Prioridade
-    if (descontosAcordosAtivos.quitacao > 0 && valorTotal > 0) {
-      const valorComDesconto = valorTotal * (1 - descontosAcordosAtivos.quitacao / 100);
-      const economia = valorTotal - valorComDesconto;
-      
-      mensagemGerada += `*${numeroOpcao} - QUITAÇÃO* no boleto à vista ou PIX: *R$ ${valorComDesconto.toFixed(2).replace('.', ',')}* vencimento *HOJE*\n`;
-      mensagemGerada += `Economia de *R$ ${economia.toFixed(2).replace('.', ',')}*\n\n`;
-      numeroOpcao++;
-    }
-
-    // 2. QUITAÇÃO NO CARTÃO (até 12x)
-    if (descontosAcordosAtivos.quitacao > 0 && valorTotal > 0) {
-      const valorComDesconto = valorTotal * (1 - descontosAcordosAtivos.quitacao / 100);
-      const parcela12x = valorComDesconto / 12;
-      
-      mensagemGerada += `*${numeroOpcao} - QUITAÇÃO* no Cartão de crédito: até em *12x de R$ ${parcela12x.toFixed(2).replace('.', ',')}* podendo ser de terceiros\n\n`;
-      numeroOpcao++;
-    }
-
-    // 3. JUNÇÃO (Cliente SEM atraso: parcela atual + próxima)
-    if (descontosAcordosAtivos.juncao > 0 && valorParcelaNum > 0) {
-      const juncao = (valorParcelaNum * 2) * (1 - descontosAcordosAtivos.juncao / 100);
-      
-      mensagemGerada += `*${numeroOpcao} - Parcela a vencer + próximo mês* por *R$ ${juncao.toFixed(2).replace('.', ',')}* via pix/cartão *HOJE*\n\n`;
-      numeroOpcao++;
-    }
-
-    // 4. PARCELA A VENCER COM DESCONTO
-    if (descontosAcordosAtivos.atrasoParcelaVencer > 0 && valorParcelaNum > 0) {
-      const parcelaAVencer = valorParcelaNum * (1 - descontosAcordosAtivos.atrasoParcelaVencer / 100);
-      
-      mensagemGerada += `*${numeroOpcao} - Parcela a vencer* por *R$ ${parcelaAVencer.toFixed(2).replace('.', ',')}* via pix/cartão *HOJE*\n\n`;
-      numeroOpcao++;
-    }
-
-    mensagemGerada += "*Qual a melhor opção para negociar hoje e antecipar seu acordo?*";
-
-    setMensagemAcordo(mensagemGerada);
+    setErrosAcordo({});
+    setMensagemAcordo(
+      gerarMensagemAcordoAtivo(validacao.valorParcelaNum, validacao.parcelasRestantesNum, descontosAcordosAtivos),
+    );
+    setEntradasDoAcordo(assinaturaAcordo);
 
     toast({
       title: "Cálculo realizado!",
@@ -557,18 +484,20 @@ const Index = () => {
               usuarioLogado={usuarioLogado}
               getSetoresPermitidos={getSetoresPermitidos}
               valorTotal={valorTotal}
-              setValorTotal={setValorTotal}
+              setValorTotal={(v) => { setValorTotal(v); setErros((e) => ({ ...e, valorTotal: undefined })); }}
               valorParcela={valorParcela}
-              setValorParcela={setValorParcela}
+              setValorParcela={(v) => { setValorParcela(v); setErros((e) => ({ ...e, valorParcela: undefined })); }}
               parcelasAtraso={parcelasAtraso}
-              setParcelasAtraso={setParcelasAtraso}
+              setParcelasAtraso={(v) => { setParcelasAtraso(v); setErros((e) => ({ ...e, parcelasAtraso: undefined })); }}
               calcularTodosDescontos={calcularTodosDescontos}
               limparTodosCampos={limparTodosCampos}
               mensagem={mensagem}
-              mensagensCalculadas={mensagensCalculadas}
+              temVariantes={!!resultado && setorTemVariantes(resultado.setor)}
+              erros={erros}
+              desatualizado={desatualizado}
               mensagemAtual={mensagemAtual}
               trocarMensagem={trocarMensagem}
-              opcoesCalculadas={opcoesCalculadas}
+              opcoesCalculadas={resultado?.opcoes ?? []}
               opcoesAtivas={opcoesAtivas}
               toggleOpcao={toggleOpcao}
               copiarMensagem={copiarMensagem}
@@ -598,14 +527,16 @@ const Index = () => {
               statusAcordo={statusAcordo}
               setStatusAcordo={setStatusAcordo}
               valorParcelaAcordo={valorParcelaAcordo}
-              setValorParcelaAcordo={setValorParcelaAcordo}
+              setValorParcelaAcordo={(v) => { setValorParcelaAcordo(v); setErrosAcordo((e) => ({ ...e, valorParcela: undefined })); }}
               parcelasRestantes={parcelasRestantes}
-              setParcelasRestantes={setParcelasRestantes}
+              setParcelasRestantes={(v) => { setParcelasRestantes(v); setErrosAcordo((e) => ({ ...e, parcelasRestantes: undefined })); }}
               isMinimized={isMinimized}
               setIsMinimized={setIsMinimized}
               calcularAcordoAtivo={calcularAcordoAtivo}
               mensagemAcordo={mensagemAcordo}
               copiarMensagemAcordo={copiarMensagemAcordo}
+              erros={errosAcordo}
+              desatualizado={acordoDesatualizado}
             />
           </TabsContent>
 

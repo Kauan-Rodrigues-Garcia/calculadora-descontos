@@ -4,8 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Copy, Check, Calculator, Settings, Target, Plus } from "lucide-react";
-import { type OpcaoCalculada, type OpcaoId } from "@/lib/calculos";
+import { Copy, Check, Calculator, Settings, Target, Plus, AlertTriangle } from "lucide-react";
+import { type CampoEntrada, type OpcaoCalculada, type OpcaoId } from "@/lib/calculos";
 import { type UsuarioLogado } from "@/lib/auth";
 
 interface AbaCalculadoraProps {
@@ -23,7 +23,9 @@ interface AbaCalculadoraProps {
   calcularTodosDescontos: () => void;
   limparTodosCampos: () => void;
   mensagem: string;
-  mensagensCalculadas: { [key: number]: string };
+  temVariantes: boolean;
+  erros: Partial<Record<CampoEntrada, string>>;
+  desatualizado: boolean;
   mensagemAtual: number;
   trocarMensagem: () => void;
   opcoesCalculadas: OpcaoCalculada[];
@@ -47,7 +49,9 @@ const AbaCalculadora = ({
   calcularTodosDescontos,
   limparTodosCampos,
   mensagem,
-  mensagensCalculadas,
+  temVariantes,
+  erros,
+  desatualizado,
   mensagemAtual,
   trocarMensagem,
   opcoesCalculadas,
@@ -99,6 +103,9 @@ const AbaCalculadora = ({
                 ))}
               </SelectContent>
             </Select>
+            {erros.setor && (
+              <p className="text-xs mt-1 font-medium text-red-500">{erros.setor}</p>
+            )}
           </div>
 
           <div>
@@ -118,11 +125,15 @@ const AbaCalculadora = ({
                   : 'bg-white border-slate-300 text-slate-800 placeholder-slate-500 hover:border-blue-500 focus:border-blue-500'
               }`}
             />
-            <p className={`text-xs mt-1 ${
-              isDark ? 'text-slate-400' : 'text-slate-500'
-            }`}>
-              Aceita: 1000 | 1.000 | 1000,00 | 1.000,00
-            </p>
+            {erros.valorTotal ? (
+              <p className="text-xs mt-1 font-medium text-red-500">{erros.valorTotal}</p>
+            ) : (
+              <p className={`text-xs mt-1 ${
+                isDark ? 'text-slate-400' : 'text-slate-500'
+              }`}>
+                Aceita: 1000 | 1.000 | 1000,00 | 1.000,00
+              </p>
+            )}
           </div>
 
           {setor !== "PLAY 6" ? (
@@ -143,11 +154,15 @@ const AbaCalculadora = ({
                     : 'bg-white border-slate-300 text-slate-800 placeholder-slate-500 hover:border-blue-500 focus:border-blue-500'
                 }`}
               />
-              <p className={`text-xs mt-1 ${
-                isDark ? 'text-slate-400' : 'text-slate-500'
-              }`}>
-                Usado para calcular junções e parcelamentos
-              </p>
+              {erros.valorParcela ? (
+                <p className="text-xs mt-1 font-medium text-red-500">{erros.valorParcela}</p>
+              ) : (
+                <p className={`text-xs mt-1 ${
+                  isDark ? 'text-slate-400' : 'text-slate-500'
+                }`}>
+                  Usado para calcular junções e parcelamentos
+                </p>
+              )}
             </div>
           ) : null}
 
@@ -170,6 +185,9 @@ const AbaCalculadora = ({
                     : 'bg-white border-slate-300 text-slate-800 placeholder-slate-500 hover:border-blue-500 focus:border-blue-500'
                 }`}
               />
+              {erros.parcelasAtraso && (
+                <p className="text-xs mt-1 font-medium text-red-500">{erros.parcelasAtraso}</p>
+              )}
             </div>
           ) : null}
 
@@ -213,7 +231,7 @@ const AbaCalculadora = ({
               isDark ? 'text-white' : 'text-slate-800'
             }`}>
               Mensagem Gerada
-              {Object.keys(mensagensCalculadas).length > 0 && (
+              {temVariantes && (
                 <span className={`ml-2 text-sm font-normal px-2 py-1 rounded-full ${
                   isDark ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-700'
                 }`}>
@@ -221,7 +239,7 @@ const AbaCalculadora = ({
                 </span>
               )}
             </CardTitle>
-            {Object.keys(mensagensCalculadas).length > 0 && (
+            {temVariantes && (
               <Button
                 onClick={trocarMensagem}
                 variant="outline"
@@ -266,11 +284,21 @@ const AbaCalculadora = ({
                       }`}
                     >
                       {ativo ? <Check className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />}
-                      {opcao.label}
+                      {opcao.label}{opcao.percentual === 0 ? " (0%)" : ""}
                     </button>
                   );
                 })}
               </div>
+            </div>
+          )}
+          {desatualizado && (
+            <div className={`mb-4 p-3 rounded-xl border flex items-start gap-2 text-sm ${
+              isDark ? 'bg-amber-900/30 border-amber-700 text-amber-200' : 'bg-amber-50 border-amber-300 text-amber-800'
+            }`}>
+              <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+              <span>
+                <strong>Os dados mudaram depois do cálculo.</strong> Clique em Calcular Descontos de novo antes de copiar.
+              </span>
             </div>
           )}
           <Textarea
@@ -291,7 +319,7 @@ const AbaCalculadora = ({
                 ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/25'
                 : 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/25'
             }`}
-            disabled={!mensagem}
+            disabled={!mensagem || desatualizado}
           >
             <Copy className="h-5 w-5 mr-2" />
             Copiar Mensagem

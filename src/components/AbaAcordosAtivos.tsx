@@ -5,8 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Calculator, Settings, BarChart3, FileText, Copy, Minus, Plus } from "lucide-react";
-import { parseValorMonetario, formatBRL, type DescontosAcordo } from "@/lib/calculos";
+import { Calculator, Settings, BarChart3, FileText, Copy, Minus, Plus, AlertTriangle } from "lucide-react";
+import { lerValorMonetario, formatBRL, type DescontosAcordo } from "@/lib/calculos";
+import { CampoPercentual } from "@/components/Campos";
 
 interface AbaAcordosAtivosProps {
   isDark: boolean;
@@ -23,6 +24,8 @@ interface AbaAcordosAtivosProps {
   calcularAcordoAtivo: () => void;
   mensagemAcordo: string;
   copiarMensagemAcordo: () => void;
+  erros: Partial<Record<"valorParcela" | "parcelasRestantes", string>>;
+  desatualizado: boolean;
 }
 
 const AbaAcordosAtivos = ({
@@ -40,6 +43,8 @@ const AbaAcordosAtivos = ({
   calcularAcordoAtivo,
   mensagemAcordo,
   copiarMensagemAcordo,
+  erros,
+  desatualizado,
 }: AbaAcordosAtivosProps) => {
   return (
     <>
@@ -70,11 +75,9 @@ const AbaAcordosAtivos = ({
                   <Label className={`text-xs font-semibold mt-auto mb-2 block ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
                     Quitação (%)
                   </Label>
-                  <Input
-                    type="number"
-                    value={descontosAcordosAtivos.quitacao}
-                    onChange={(e) => {
-                      const novoValor = parseFloat(e.target.value) || 0;
+                  <CampoPercentual
+                    valor={descontosAcordosAtivos.quitacao}
+                    aoMudar={(novoValor) => {
                       setDescontosAcordosAtivos(prev => ({ ...prev, quitacao: novoValor }));
                     }}
                     className={`h-10 rounded-lg border-2 text-center font-semibold ${isDark ? 'bg-slate-600 border-slate-500 text-white focus:border-blue-500' : 'bg-white border-slate-300 text-slate-800 focus:border-blue-500'}`}
@@ -84,11 +87,9 @@ const AbaAcordosAtivos = ({
                   <Label className={`text-xs font-semibold mb-2 block ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
                     Junção (%): (parcela do mês + a vencer)
                   </Label>
-                  <Input
-                    type="number"
-                    value={descontosAcordosAtivos.juncao}
-                    onChange={(e) => {
-                      const novoValor = parseFloat(e.target.value) || 0;
+                  <CampoPercentual
+                    valor={descontosAcordosAtivos.juncao}
+                    aoMudar={(novoValor) => {
                       setDescontosAcordosAtivos(prev => ({ ...prev, juncao: novoValor }));
                     }}
                     className={`h-10 rounded-lg border-2 text-center font-semibold ${isDark ? 'bg-slate-600 border-slate-500 text-white focus:border-blue-500' : 'bg-white border-slate-300 text-slate-800 focus:border-blue-500'}`}
@@ -98,11 +99,9 @@ const AbaAcordosAtivos = ({
                   <Label className={`text-xs mt-auto font-semibold mb-2 block ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
                     Atraso/Parcela a Vencer (%)
                   </Label>
-                  <Input
-                    type="number"
-                    value={descontosAcordosAtivos.atrasoParcelaVencer}
-                    onChange={(e) => {
-                      const novoValor = parseFloat(e.target.value) || 0;
+                  <CampoPercentual
+                    valor={descontosAcordosAtivos.atrasoParcelaVencer}
+                    aoMudar={(novoValor) => {
                       setDescontosAcordosAtivos(prev => ({ ...prev, atrasoParcelaVencer: novoValor }));
                     }}
                     className={`h-10 rounded-lg border-2 text-center font-semibold ${isDark ? 'bg-slate-600 border-slate-500 text-white focus:border-blue-500' : 'bg-white border-slate-300 text-slate-800 focus:border-blue-500'}`}
@@ -139,6 +138,9 @@ const AbaAcordosAtivos = ({
                     placeholder="Ex: 199,90"
                     className={`h-12 rounded-xl border-2 transition-all ${isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400 hover:border-blue-500 focus:border-blue-500' : 'bg-white border-slate-300 text-slate-800 placeholder-slate-500 hover:border-blue-500 focus:border-blue-500'}`}
                   />
+                  {erros.valorParcela && (
+                    <p className="text-xs mt-1 font-medium text-red-500">{erros.valorParcela}</p>
+                  )}
                 </div>
               </div>
 
@@ -154,6 +156,9 @@ const AbaAcordosAtivos = ({
                   placeholder="Ex: 5"
                   className={`h-12 rounded-xl border-2 transition-all ${isDark ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400 hover:border-blue-500 focus:border-blue-500' : 'bg-white border-slate-300 text-slate-800 placeholder-slate-500 hover:border-blue-500 focus:border-blue-500'}`}
                 />
+                {erros.parcelasRestantes && (
+                  <p className="text-xs mt-1 font-medium text-red-500">{erros.parcelasRestantes}</p>
+                )}
               </div>
 
               <Button
@@ -212,7 +217,7 @@ const AbaAcordosAtivos = ({
                       <span className={`font-medium ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>Total a pagar:</span>
                       <span className={`font-semibold ${isDark ? 'text-white' : 'text-slate-800'}`}>
                         R$ {valorParcelaAcordo && parcelasRestantes ?
-                          formatBRL(parseValorMonetario(valorParcelaAcordo) * parseInt(parcelasRestantes)) :
+                          formatBRL((lerValorMonetario(valorParcelaAcordo) ?? 0) * (parseInt(parcelasRestantes) || 0)) :
                           "0,00"}
                       </span>
                     </div>
@@ -220,7 +225,7 @@ const AbaAcordosAtivos = ({
                       <span className={`font-medium ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>Economia:</span>
                       <span className={`font-semibold ${isDark ? 'text-white' : 'text-slate-800'}`}>
                         R$ {valorParcelaAcordo && parcelasRestantes ?
-                          formatBRL(parseValorMonetario(valorParcelaAcordo) * parseInt(parcelasRestantes) * descontosAcordosAtivos.quitacao / 100) :
+                          formatBRL((lerValorMonetario(valorParcelaAcordo) ?? 0) * (parseInt(parcelasRestantes) || 0) * descontosAcordosAtivos.quitacao / 100) :
                           "0,00"}
                       </span>
                     </div>
@@ -245,6 +250,14 @@ const AbaAcordosAtivos = ({
               </CardTitle>
             </CardHeader>
             <CardContent>
+              {desatualizado && (
+                <div className={`mb-4 p-3 rounded-xl border flex items-start gap-2 text-sm ${isDark ? 'bg-amber-900/30 border-amber-700 text-amber-200' : 'bg-amber-50 border-amber-300 text-amber-800'}`}>
+                  <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                  <span>
+                    <strong>Os dados mudaram depois de gerar.</strong> Clique em Gerar Opções de Acordo de novo antes de copiar.
+                  </span>
+                </div>
+              )}
               <Textarea
                 value={mensagemAcordo}
                 readOnly
@@ -256,7 +269,7 @@ const AbaAcordosAtivos = ({
                 <Button
                   onClick={copiarMensagemAcordo}
                   className={`flex-1 h-12 rounded-xl font-semibold text-base transition-all ${isDark ? 'bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-600/25' : 'bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-600/25'}`}
-                  disabled={!mensagemAcordo}
+                  disabled={!mensagemAcordo || desatualizado}
                 >
                   <Copy className="h-5 w-5 mr-2" />
                   Copiar Mensagem

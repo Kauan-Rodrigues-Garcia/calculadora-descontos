@@ -11,7 +11,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "preview:dev": "npm run build:dev && npm run preview",
-    "test:edge-functions": "cd supabase/edge_function && deno task test"
+    "test:edge-functions": "cd supabase/edge_function && deno task test",
+    "test": "node --test --experimental-strip-types \"tests/*.test.ts\""
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",

@@ -10,7 +10,7 @@ const PASSOS = [
   {
     numero: "2️⃣",
     titulo: "Informe o Valor Total em Aberto",
-    descricao: "Digite o valor total da dívida. Aceita vários formatos: 1000, 1.000, 1000,00 ou 1.000,00.",
+    descricao: "Digite o valor total da dívida. Aceita vários formatos: 1000, 1.000, 1000,00 ou 1.000,00. Se o valor não der para entender, o campo avisa em vermelho.",
   },
   {
     numero: "3️⃣",
@@ -25,7 +25,7 @@ const PASSOS = [
   {
     numero: "5️⃣",
     titulo: "Clique em 'Calcular Descontos'",
-    descricao: "Sistema processa e gera mensagem com todas as opções disponíveis.",
+    descricao: "Sistema processa e gera a mensagem. Opção com 0% de desconto (parcela e PIX Automático) vem desmarcada; clique nela para incluir.",
   },
   {
     numero: "6️⃣",
